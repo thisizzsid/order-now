@@ -17,11 +17,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem("moc_customer");
-    if (stored) {
-      setCustomer(JSON.parse(stored));
+    try {
+      const savedCustomer = localStorage.getItem("moc_customer");
+      if (savedCustomer) {
+        setCustomer(JSON.parse(savedCustomer));
+      }
+    } catch (e) {
+      console.error("Auth initialization error:", e);
+      localStorage.removeItem("moc_customer");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const login = (cust: Customer) => {

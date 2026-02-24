@@ -19,7 +19,7 @@ function MenuContent() {
   const { customer, isLoading } = useAuth();
   const { items, addToCart, removeFromCart, clearCart, totalAmount } = useCart();
   
-  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [menuItems, setMenuItems] = useState<any[]>(MENU_ITEMS);
   const [upiId, setUpiId] = useState("");
   const [orderType, setOrderType] = useState<OrderType>(tableNumber ? "dinein" : "takeaway");
   const [paymentType, setPaymentType] = useState<PaymentType>("upi");
@@ -27,18 +27,45 @@ function MenuContent() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [showSupport, setShowSupport] = useState(false);
   const [showFullCheckout, setShowFullCheckout] = useState(false);
+  const [isMenuLoading, setIsMenuLoading] = useState(true);
 
   useEffect(() => {
-    if (!isLoading && !customer) router.push("/auth");
+    if (!isLoading && !customer) {
+      console.log("No customer found, redirecting to /auth");
+      router.push("/auth");
+    }
   }, [customer, isLoading, router]);
 
   useEffect(() => {
+    console.log("Starting Menu Sync...");
     // Sync Menu from DB
     const q = query(collection(db, "menu"), orderBy("category"));
-    const unsubMenu = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setMenuItems(data.length > 0 ? data : MENU_ITEMS);
-    });
+    const unsubMenu = onSnapshot(q, 
+      (snapshot) => {
+        const dbData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log("Menu Snapshot received, db count:", dbData.length);
+        
+        // Merge strategy: Local items + DB items
+        // If DB has items, we append them to our local list or replace duplicates by name
+        const merged = [...MENU_ITEMS];
+        dbData.forEach((dbItem: any) => {
+          const index = merged.findIndex(i => i.name.toLowerCase() === dbItem.name.toLowerCase());
+          if (index !== -1) {
+            merged[index] = { ...merged[index], ...dbItem }; // Update existing by name
+          } else {
+            merged.push(dbItem); // Add new ones
+          }
+        });
+        
+        setMenuItems(merged);
+        setIsMenuLoading(false);
+      },
+      (error) => {
+        console.error("Menu Sync Error:", error);
+        setMenuItems(MENU_ITEMS);
+        setIsMenuLoading(false);
+      }
+    );
 
     // Sync UPI Settings
     const unsubSettings = onSnapshot(doc(db, "settings", "config"), (d) => {
@@ -144,61 +171,88 @@ function MenuContent() {
 
       {/* Menu Items */}
       <div className="px-6 space-y-6">
-        {filteredItems.map(item => {
-          const cartItem = items.find(i => i.id === item.id);
-          return (
-            <motion.div 
-              layout
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              key={item.id} 
-              className="bg-white p-5 rounded-[2.5rem] shadow-sm flex items-center gap-5 border border-white hover:border-orange-100 active:scale-[0.98] transition-all relative overflow-hidden"
-            >
-              <div className="flex-1 relative z-10">
-                <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">{item.category}</p>
-                <h3 className="font-black text-gray-900 text-xl leading-tight mb-1">{item.name}</h3>
-                <p className="text-gray-400 text-xs font-medium line-clamp-2 leading-relaxed">{item.description}</p>
-                <div className="flex items-center gap-3 mt-4">
-                  <p className="text-orange-600 font-black text-2xl">{formatPrice(item.price)}</p>
-                  <span className="text-[10px] font-bold text-gray-300 border border-gray-100 px-2 py-1 rounded-lg">Excl. GST</span>
-                </div>
-              </div>
-              
-              <div className="relative z-10">
-                {cartItem ? (
-                  <div className="flex flex-col items-center gap-2 bg-orange-50 p-2 rounded-4xl border border-orange-100 shadow-inner">
-                    <button 
-                      onClick={() => addToCart({ ...item, quantity: 1 })}
-                      aria-label="Increase quantity"
-                      className="w-12 h-12 bg-orange-600 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-transform"
-                    >
-                      <Plus size={20} />
-                    </button>
-                    <span className="font-black text-orange-900 text-lg w-6 text-center">{cartItem.quantity}</span>
-                    <button 
-                      onClick={() => removeFromCart(item.id)}
-                      aria-label="Decrease quantity"
-                      className="w-12 h-12 bg-white text-orange-600 rounded-2xl flex items-center justify-center shadow-sm active:scale-90 transition-transform border border-orange-100"
-                    >
-                      <Minus size={20} />
-                    </button>
+        {isMenuLoading && menuItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+            <div className="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="font-black uppercase tracking-widest text-xs">Loading Menu...</p>
+          </div>
+        ) : filteredItems.length > 0 ? (
+          filteredItems.map(item => {
+            const cartItem = items.find(i => i.id === item.id);
+            return (
+              <motion.div 
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                key={item.id} 
+                className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-orange-50 group hover:shadow-xl hover:shadow-orange-200/50 transition-all duration-500"
+              >
+                <div className="flex gap-6">
+                  {/* Item Image Placeholder */}
+                  <div className="w-24 h-24 bg-orange-100 rounded-3xl flex items-center justify-center text-orange-600 shrink-0 shadow-inner group-hover:scale-110 transition-transform duration-500">
+                    <Utensils size={32} />
                   </div>
-                ) : (
-                  <button 
-                    onClick={() => addToCart({ ...item, quantity: 1 })}
-                    aria-label="Add to cart"
-                    className="w-16 h-16 bg-orange-600 text-white rounded-4xl flex items-center justify-center shadow-xl shadow-orange-200 active:scale-90 transition-all group"
-                  >
-                    <Plus size={32} className="group-hover:rotate-90 transition-transform duration-300" />
-                  </button>
-                )}
-              </div>
-              
-              {/* Decorative background element */}
-              <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-orange-50 rounded-full opacity-50 blur-2xl z-0" />
-            </motion.div>
-          );
-        })}
+                  
+                  {/* Item Details */}
+                  <div className="flex-1 min-w-0 py-1">
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="text-lg font-black text-gray-900 truncate tracking-tight">{item.name}</h3>
+                      <p className="text-lg font-black text-orange-600 ml-2">{formatPrice(item.price)}</p>
+                    </div>
+                    <p className="text-xs text-gray-400 font-medium line-clamp-2 leading-relaxed mb-4">
+                      {item.description}
+                    </p>
+                    
+                    {/* Add to Cart Actions */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <span className="bg-orange-100 text-orange-600 text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-widest">
+                          {item.category}
+                        </span>
+                      </div>
+                      
+                      {cartItem ? (
+                        <div className="flex items-center bg-gray-900 rounded-2xl p-1 shadow-lg">
+                          <button 
+                            onClick={() => removeFromCart(item.id)}
+                            aria-label="Remove one"
+                            className="p-2 hover:bg-gray-800 rounded-xl text-white transition-colors"
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <span className="w-8 text-center font-black text-white text-sm">{cartItem.quantity}</span>
+                          <button 
+                            onClick={() => addToCart(item)}
+                            aria-label="Add more"
+                            className="p-2 hover:bg-gray-800 rounded-xl text-white transition-colors"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => addToCart(item)}
+                          aria-label="Add to cart"
+                          className="bg-orange-600 text-white p-3 rounded-2xl shadow-lg shadow-orange-600/20 active:scale-90 transition-all hover:bg-orange-700"
+                        >
+                          <Plus size={20} strokeWidth={3} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })
+        ) : (
+          <div className="flex flex-col items-center justify-center py-40 text-gray-300">
+            <div className="w-20 h-20 bg-gray-100 rounded-[2.5rem] flex items-center justify-center mb-6 opacity-50">
+              <ShoppingBag size={40} />
+            </div>
+            <p className="text-lg font-black text-gray-900 mb-1">No items found</p>
+            <p className="text-xs font-bold uppercase tracking-widest">Try a different category</p>
+          </div>
+        )}
       </div>
 
       {/* Support FAB */}
