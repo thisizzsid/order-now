@@ -22,6 +22,7 @@ export interface Order {
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
   createdAt: any;
+  lastPingAt?: any;
   queuePosition?: number;
   estimatedWaitTime?: number; // in minutes
 }

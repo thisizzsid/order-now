@@ -118,6 +118,25 @@ export default function AdminPage() {
           });
         }
       }
+
+      // Trigger ping sound if an order's lastPingAt is updated
+      if (!isInitialLoad) {
+        snapshot.docChanges().forEach(change => {
+          if (change.type === "modified") {
+            const newData = change.doc.data() as any;
+            const oldOrder = orders.find(o => o.id === change.doc.id);
+            if (newData.lastPingAt && (!oldOrder?.lastPingAt || newData.lastPingAt.toMillis() > (oldOrder.lastPingAt as any).toMillis())) {
+              notificationManager?.playCustomerPing();
+              if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("Customer Ping!", {
+                  body: `${newData.customerName} (Table ${newData.tableNumber || 'Takeaway'}) is calling!`,
+                  icon: "/moclogo.png"
+                });
+              }
+            }
+          }
+        });
+      }
       isInitialLoad = false;
       
       setOrders(ordersData);
@@ -226,6 +245,13 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Error updating payment:", error);
     }
+  };
+
+  const isRecentPing = (order: Order) => {
+    if (!order.lastPingAt) return false;
+    const pingTime = (order.lastPingAt as any).toMillis();
+    const now = Date.now();
+    return (now - pingTime) < 60000; // Highlight for 1 minute after ping
   };
 
   const filteredOrders = orders.filter(o => {
@@ -677,7 +703,7 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
                     <button 
                       onClick={() => notificationManager?.playNewOrder()}
                       className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-orange-600 hover:border-orange-100 transition-all"
@@ -690,74 +716,87 @@ export default function AdminPage() {
                     >
                       Test Order Ready
                     </button>
+                    <button 
+                      onClick={() => notificationManager?.playCustomerPing()}
+                      className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-orange-600 hover:border-orange-100 transition-all"
+                    >
+                      Test Customer Ping
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
             <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-3' : 'grid-cols-1'}`}>
-              {filteredOrders.map(order => (
-                <div 
-                  key={order.id} 
-                  className={`bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col group hover:shadow-2xl hover:shadow-orange-600/5 transition-all duration-500 ${
-                    viewMode === 'list' ? 'flex-row items-center p-6' : ''
-                  }`}
-                >
-                  {/* Header */}
-                  <div className={`p-8 border-b border-gray-50 ${viewMode === 'list' ? 'border-none w-1/4' : ''}`}>
-                    <div className="flex items-start justify-between mb-6">
-                      <div>
-                        <div className="flex items-center gap-3 mb-2">
-                          {order.type === 'dinein' ? (
-                            <span className="bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl flex items-center gap-2">
-                              <TableIcon size={14} /> T-{order.tableNumber}
-                            </span>
-                          ) : (
-                            <span className="bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl flex items-center gap-2">
-                              <ShoppingBag size={14} /> TAKEAWAY
-                            </span>
-                          )}
-                          <span className="text-[10px] text-gray-400 font-black">#{order.id?.slice(-6).toUpperCase()}</span>
-                        </div>
-                        <h3 className="text-2xl font-black text-gray-900 flex items-center gap-3">
-                          <User size={20} className="text-gray-300" /> {order.customerName}
-                        </h3>
-                        <p className="text-xs font-bold text-gray-400 mt-1 flex items-center gap-2">
-                          <Phone size={14} /> +{order.customerMobile}
-                        </p>
-                      </div>
-                      <button 
-                        aria-label="Order Options"
-                        className="text-gray-300 hover:text-gray-600 p-2"
-                      >
-                        <MoreVertical size={20} />
-                      </button>
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-gray-400 font-black text-[10px] uppercase tracking-widest">
-                      <span className="flex items-center gap-2"><Clock size={14} /> {order.createdAt ? format(order.createdAt.toDate(), 'hh:mm a') : 'Now'}</span>
-                      <span className="text-orange-600">{formatPrice(order.totalAmount + (order.taxAmount || 0))}</span>
-                    </div>
-                  </div>
-
-                  {/* Items */}
-                  <div className={`p-8 bg-gray-50/50 flex-1 ${viewMode === 'list' ? 'bg-transparent w-2/4' : ''}`}>
-                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-4">Ordered Items ({order.items.length})</p>
-                    <div className="space-y-4">
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center group/item">
-                          <div className="flex items-center gap-4">
-                            <span className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-xs font-black text-orange-600 shadow-sm group-hover/item:scale-110 transition-transform">
-                              {item.quantity}
-                            </span>
-                            <div className="flex flex-col">
-                              <span className="font-black text-gray-800 text-sm tracking-tight">{item.name}</span>
-                              {item.variantName && (
-                                <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">{item.variantName}</span>
-                              )}
-                            </div>
+              {filteredOrders.map(order => {
+                const hasPinged = isRecentPing(order);
+                return (
+                  <div 
+                    key={order.id} 
+                    className={`bg-white rounded-[2.5rem] shadow-sm border overflow-hidden flex flex-col group hover:shadow-2xl hover:shadow-orange-600/5 transition-all duration-500 ${
+                      viewMode === 'list' ? 'flex-row items-center p-6' : ''
+                    } ${hasPinged ? 'border-orange-500 ring-4 ring-orange-100 animate-pulse' : 'border-gray-100'}`}
+                  >
+                    {/* Header */}
+                    <div className={`p-8 border-b border-gray-50 ${viewMode === 'list' ? 'border-none w-1/4' : ''}`}>
+                      <div className="flex items-start justify-between mb-6">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            {order.type === 'dinein' ? (
+                              <span className="bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl flex items-center gap-2">
+                                <TableIcon size={14} /> T-{order.tableNumber}
+                              </span>
+                            ) : (
+                              <span className="bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl flex items-center gap-2">
+                                <ShoppingBag size={14} /> TAKEAWAY
+                              </span>
+                            )}
+                            <span className="text-[10px] text-gray-400 font-black">#{order.id?.slice(-6).toUpperCase()}</span>
+                            {hasPinged && (
+                              <span className="bg-orange-600 text-white text-[10px] font-black uppercase px-2 py-1 rounded-lg flex items-center gap-1 animate-bounce">
+                                <Bell size={10} /> PINGING!
+                              </span>
+                            )}
                           </div>
-                          <span className="text-xs font-black text-gray-400">{formatPrice(item.price * item.quantity)}</span>
+                          <h3 className="text-2xl font-black text-gray-900 flex items-center gap-3">
+                            <User size={20} className="text-gray-300" /> {order.customerName}
+                          </h3>
+                          <p className="text-xs font-bold text-gray-400 mt-1 flex items-center gap-2">
+                            <Phone size={14} /> +{order.customerMobile}
+                          </p>
+                        </div>
+                        <button 
+                          aria-label="Order Options"
+                          className="text-gray-300 hover:text-gray-600 p-2"
+                        >
+                          <MoreVertical size={20} />
+                        </button>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-gray-400 font-black text-[10px] uppercase tracking-widest">
+                        <span className="flex items-center gap-2"><Clock size={14} /> {order.createdAt ? format(order.createdAt.toDate(), 'hh:mm a') : 'Now'}</span>
+                        <span className="text-orange-600">{formatPrice(order.totalAmount + (order.taxAmount || 0))}</span>
+                      </div>
+                    </div>
+
+                    {/* Items */}
+                    <div className={`p-8 bg-gray-50/50 flex-1 ${viewMode === 'list' ? 'bg-transparent w-2/4' : ''}`}>
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-4">Ordered Items ({order.items.length})</p>
+                      <div className="space-y-4">
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center group/item">
+                            <div className="flex items-center gap-4">
+                              <span className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-xs font-black text-orange-600 shadow-sm group-hover/item:scale-110 transition-transform">
+                                {item.quantity}
+                              </span>
+                              <div className="flex flex-col">
+                                <span className="font-black text-gray-800 text-sm tracking-tight">{item.name}</span>
+                                {item.variantName && (
+                                  <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">{item.variantName}</span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-xs font-black text-gray-400">{formatPrice(item.price * item.quantity)}</span>
                         </div>
                       ))}
                     </div>

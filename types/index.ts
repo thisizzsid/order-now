@@ -29,6 +29,7 @@ export interface Order {
   customerName: string;
   customerMobile: string;
   taxAmount?: number;
+  lastPingAt?: any; // Firestore Timestamp
 }
 
 export interface MenuItem {

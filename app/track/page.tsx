@@ -3,13 +3,13 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { db } from "../../lib/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, serverTimestamp } from "firebase/firestore";
 import { Order } from "../../types/models";
 import { formatPrice } from "../../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { BellRing, CheckCircle, Receipt, ArrowLeft, Loader2, MapPin, Smartphone, Clock, ChefHat, CheckCircle2, ShoppingBag, Volume2, VolumeX } from "lucide-react";
+import { BellRing, CheckCircle, Receipt, ArrowLeft, Loader2, MapPin, Smartphone, Clock, ChefHat, CheckCircle2, ShoppingBag, Volume2, VolumeX, Bell } from "lucide-react";
 import { notificationManager } from "../../lib/notification-manager";
 
 function TrackContent() {
@@ -21,6 +21,7 @@ function TrackContent() {
   const [timeLeft, setTimeLeft] = useState(10); 
   const [hasNotified, setHasNotified] = useState(false);
   const [notifSettings, setNotifSettings] = useState({ volume: 1.0, enabled: true });
+  const [isPinging, setIsPinging] = useState(false);
 
   useEffect(() => {
     if (notificationManager) {
@@ -86,6 +87,21 @@ function TrackContent() {
 
     return () => clearInterval(timer);
   }, [order]);
+
+  const handlePingAdmin = async () => {
+    if (!orderId || isPinging) return;
+    setIsPinging(true);
+    try {
+      await updateDoc(doc(db, "orders", orderId), {
+        lastPingAt: serverTimestamp()
+      });
+      alert("Admin pinged! They will be with you shortly.");
+    } catch (e) {
+      console.error("Ping Error:", e);
+    } finally {
+      setTimeout(() => setIsPinging(false), 5000); // Prevent spamming
+    }
+  };
 
   const generateReceipt = () => {
     if (!order) return;
@@ -179,23 +195,36 @@ function TrackContent() {
           <ArrowLeft size={16} /> Back to Menu
         </button>
         <div className="flex justify-between items-end">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 relative">
-              <img src="/moclogo.png" alt="Logo" className="w-full h-full object-contain" />
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 relative">
+                <img src="/moclogo.png" alt="Logo" className="w-full h-full object-contain" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-black text-gray-900 leading-tight">Track Order</h1>
+                <p className="text-sm font-bold text-orange-600">ID: #{order.id?.slice(-6).toUpperCase()}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-black text-gray-900 leading-tight">Track Order</h1>
-              <p className="text-sm font-bold text-orange-600">ID: #{order.id?.slice(-6).toUpperCase()}</p>
+            <div className="flex gap-2">
+              <button 
+                onClick={handlePingAdmin}
+                disabled={isPinging}
+                aria-label="Ping Admin"
+                className={`p-4 rounded-3xl shadow-xl transition-all flex items-center gap-2 ${
+                  isPinging ? 'bg-gray-100 text-gray-400' : 'bg-white text-orange-600 border border-orange-100 active:scale-95'
+                }`}
+              >
+                <Bell size={24} className={isPinging ? "" : "animate-pulse"} />
+                <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Ping Admin</span>
+              </button>
+              <button 
+                onClick={generateReceipt}
+                aria-label="Download Receipt"
+                className="bg-orange-600 text-white p-4 rounded-3xl shadow-xl shadow-orange-200 active:scale-95 transition-all"
+              >
+                <Receipt size={24} />
+              </button>
             </div>
           </div>
-          <button 
-            onClick={generateReceipt}
-            aria-label="Download Receipt"
-            className="bg-orange-600 text-white p-4 rounded-3xl shadow-xl shadow-orange-200 active:scale-95 transition-all"
-          >
-            <Receipt size={24} />
-          </button>
-        </div>
       </header>
 
       <div className="px-6 space-y-8">

@@ -4,6 +4,7 @@ class NotificationManager {
   private newOrderAudio: HTMLAudioElement | null = null;
   private orderReadyAudio: HTMLAudioElement | null = null;
   private statusUpdateAudio: HTMLAudioElement | null = null;
+  private customerPingAudio: HTMLAudioElement | null = null;
   private volume: number = 1.0;
   private enabled: boolean = true;
 
@@ -12,6 +13,7 @@ class NotificationManager {
       this.newOrderAudio = new Audio("/new_order.wav");
       this.orderReadyAudio = new Audio("/order_ready.wav");
       this.statusUpdateAudio = new Audio("/status_update.wav");
+      this.customerPingAudio = new Audio("/customer_ping.wav");
       this.loadSettings();
     }
   }
@@ -65,6 +67,14 @@ class NotificationManager {
     this.statusUpdateAudio.volume = this.volume;
     this.statusUpdateAudio.currentTime = 0;
     this.statusUpdateAudio.play().catch(e => console.warn("Autoplay blocked:", e));
+  }
+
+  public playCustomerPing() {
+    if (!this.enabled || !this.customerPingAudio) return;
+    
+    this.customerPingAudio.volume = this.volume;
+    this.customerPingAudio.currentTime = 0;
+    this.customerPingAudio.play().catch(e => console.warn("Autoplay blocked:", e));
   }
 }
 
