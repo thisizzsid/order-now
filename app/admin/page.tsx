@@ -205,9 +205,24 @@ export default function AdminPage() {
   });
 
   const stats = {
-    revenue: orders.reduce((sum, o) => sum + (o.orderStatus === 'delivered' ? o.totalAmount : 0), 0),
+    revenue: orders.reduce((sum, o) => {
+      // Daily Reset: Only count revenue for orders created today
+      // Check for both Firestore Timestamp and JS Date
+      const orderDate = o.createdAt && typeof (o.createdAt as any).toDate === 'function' 
+        ? (o.createdAt as any).toDate() 
+        : (o.createdAt as any) instanceof Date ? o.createdAt : new Date();
+        
+      const isToday = orderDate.toDateString() === new Date().toDateString();
+      
+      return sum + (o.orderStatus === 'delivered' && isToday ? o.totalAmount : 0);
+    }, 0),
     activeCount: orders.filter(o => !['delivered', 'cancelled'].includes(o.orderStatus)).length,
-    completedToday: orders.filter(o => o.orderStatus === 'delivered').length,
+    completedToday: orders.filter(o => {
+      const orderDate = o.createdAt && typeof (o.createdAt as any).toDate === 'function' 
+        ? (o.createdAt as any).toDate() 
+        : (o.createdAt as any) instanceof Date ? o.createdAt : new Date();
+      return o.orderStatus === 'delivered' && orderDate.toDateString() === new Date().toDateString();
+    }).length,
     averageWait: 12 // Mock stat
   };
 
