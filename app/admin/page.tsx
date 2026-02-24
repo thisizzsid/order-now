@@ -62,6 +62,12 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
+    if ("Notification" in window) {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
     // Check session storage for existing auth
     const isAuth = sessionStorage.getItem("moc_admin_auth") === "true";
     if (isAuth) setIsAdminAuthenticated(true);
@@ -105,6 +111,12 @@ export default function AdminPage() {
       // Trigger new order sound if there's a new order added
       if (!isInitialLoad && snapshot.docChanges().some(change => change.type === "added")) {
         notificationManager?.playNewOrder();
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("Ministry Of Chai", {
+            body: "New order received!",
+            icon: "/moclogo.png"
+          });
+        }
       }
       isInitialLoad = false;
       

@@ -9,7 +9,8 @@ import { formatPrice } from "../../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { BellRing, CheckCircle, Receipt, ArrowLeft, Loader2, MapPin, Smartphone, Clock, ChefHat, CheckCircle2, ShoppingBag } from "lucide-react";
+import { BellRing, CheckCircle, Receipt, ArrowLeft, Loader2, MapPin, Smartphone, Clock, ChefHat, CheckCircle2, ShoppingBag, Volume2, VolumeX } from "lucide-react";
+import { notificationManager } from "../../lib/notification-manager";
 
 function TrackContent() {
   const router = useRouter();
@@ -19,6 +20,13 @@ function TrackContent() {
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(10); 
   const [hasNotified, setHasNotified] = useState(false);
+  const [notifSettings, setNotifSettings] = useState({ volume: 1.0, enabled: true });
+
+  useEffect(() => {
+    if (notificationManager) {
+      setNotifSettings(notificationManager.getSettings());
+    }
+  }, []);
 
   useEffect(() => {
     if ("Notification" in window) {
@@ -32,17 +40,25 @@ function TrackContent() {
       return;
     }
 
+    let previousStatus: string | null = null;
+
     const unsubscribe = onSnapshot(doc(db, "orders", orderId), (doc) => {
       if (doc.exists()) {
         const data = doc.data() as Order;
         setOrder({ id: doc.id, ...data } as Order);
         
+        // Trigger audio notification on status change
+        if (previousStatus && previousStatus !== data.orderStatus) {
+          notificationManager?.playStatusUpdate();
+        }
+        previousStatus = data.orderStatus;
+
         // Ping System: Notify when order is ready or delivered
         if ((data.orderStatus === 'ready' || data.orderStatus === 'delivered') && !hasNotified) {
           if ("Notification" in window && Notification.permission === "granted") {
             new Notification("Ministry Of Chai", {
               body: `Your order #${orderId.slice(-6).toUpperCase()} is ${data.orderStatus}!`,
-              icon: "/next.svg"
+              icon: "/moclogo.png"
             });
           }
           // Also play a subtle sound or trigger vibration if supported
@@ -183,6 +199,41 @@ function TrackContent() {
       </header>
 
       <div className="px-6 space-y-8">
+        {/* Notification Settings */}
+        <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-orange-100">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Audio Alerts</h3>
+            <button 
+              onClick={() => {
+                const next = !notifSettings.enabled;
+                setNotifSettings(prev => ({ ...prev, enabled: next }));
+                notificationManager?.saveSettings(notifSettings.volume, next);
+              }}
+              aria-label={notifSettings.enabled ? "Disable Audio" : "Enable Audio"}
+              className={`w-12 h-6 rounded-full p-1 transition-all ${notifSettings.enabled ? 'bg-orange-600' : 'bg-gray-200'}`}
+            >
+              <div className={`w-4 h-4 bg-white rounded-full shadow-md transition-all ${notifSettings.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          <div className="flex items-center gap-4">
+            {notifSettings.volume === 0 ? <VolumeX className="text-gray-400" size={18} /> : <Volume2 className="text-orange-600" size={18} />}
+            <input 
+              type="range"
+              aria-label="Volume"
+              min="0"
+              max="1"
+              step="0.1"
+              value={notifSettings.volume}
+              onChange={(e) => {
+                const next = parseFloat(e.target.value);
+                setNotifSettings(prev => ({ ...prev, volume: next }));
+                notificationManager?.saveSettings(next, notifSettings.enabled);
+              }}
+              className="flex-1 h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-orange-600"
+            />
+          </div>
+        </div>
+
         {/* Status Card */}
         <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-orange-100 text-center relative overflow-hidden">
           <div className="relative z-10">

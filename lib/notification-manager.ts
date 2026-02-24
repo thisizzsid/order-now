@@ -3,6 +3,7 @@
 class NotificationManager {
   private newOrderAudio: HTMLAudioElement | null = null;
   private orderReadyAudio: HTMLAudioElement | null = null;
+  private statusUpdateAudio: HTMLAudioElement | null = null;
   private volume: number = 1.0;
   private enabled: boolean = true;
 
@@ -10,6 +11,7 @@ class NotificationManager {
     if (typeof window !== "undefined") {
       this.newOrderAudio = new Audio("/new_order.wav");
       this.orderReadyAudio = new Audio("/order_ready.wav");
+      this.statusUpdateAudio = new Audio("/status_update.wav");
       this.loadSettings();
     }
   }
@@ -55,6 +57,14 @@ class NotificationManager {
     this.orderReadyAudio.volume = this.volume;
     this.orderReadyAudio.currentTime = 0;
     this.orderReadyAudio.play().catch(e => console.warn("Autoplay blocked:", e));
+  }
+
+  public playStatusUpdate() {
+    if (!this.enabled || !this.statusUpdateAudio) return;
+    
+    this.statusUpdateAudio.volume = this.volume;
+    this.statusUpdateAudio.currentTime = 0;
+    this.statusUpdateAudio.play().catch(e => console.warn("Autoplay blocked:", e));
   }
 }
 
