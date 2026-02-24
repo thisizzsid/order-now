@@ -200,9 +200,9 @@ function MenuContent() {
                     
                     {/* Item Details */}
                     <div className="flex-1 min-w-0 py-1">
-                      <div className="flex justify-between items-start mb-1">
-                        <h3 className="text-lg font-black text-gray-900 truncate tracking-tight">{item.name}</h3>
-                        <p className="text-lg font-black text-orange-600 ml-2">
+                      <div className="flex flex-col mb-1">
+                        <h3 className="text-lg font-black text-gray-900 leading-tight mb-1">{item.name}</h3>
+                        <p className="text-lg font-black text-orange-600">
                           {item.variants && item.variants.length > 0 
                             ? `From ${formatPrice(Math.min(...item.variants.map((v: ItemVariant) => v.price)))}`
                             : formatPrice(item.price)}
