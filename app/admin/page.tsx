@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { db } from "../../lib/firebase";
-import { collection, query, orderBy, onSnapshot, updateDoc, doc, where, limit, addDoc, deleteDoc, setDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, updateDoc, doc, where, limit, addDoc, deleteDoc, setDoc, getDocs, DocumentData, QueryDocumentSnapshot } from "firebase/firestore";
 import { Order } from "../../types/models";
 import { formatPrice } from "../../lib/utils";
 import { 
@@ -57,6 +57,33 @@ export default function AdminPage() {
     // Check session storage for existing auth
     const isAuth = sessionStorage.getItem("moc_admin_auth") === "true";
     if (isAuth) setIsAdminAuthenticated(true);
+
+    // Automatic Cleanup of Old Orders (24 Hours)
+    const cleanupOldOrders = async () => {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      console.log("Running Cleanup: Finding orders older than", twentyFourHoursAgo);
+      
+      const q = query(
+        collection(db, "orders"), 
+        where("createdAt", "<", twentyFourHoursAgo)
+      );
+      
+      try {
+        const snapshot = await getDocs(q);
+        if (snapshot.docs.length > 0) {
+          console.log(`Found ${snapshot.docs.length} old orders. Deleting...`);
+          const deletePromises = snapshot.docs.map((d: QueryDocumentSnapshot<DocumentData>) => deleteDoc(d.ref));
+          await Promise.all(deletePromises);
+          console.log("Cleanup complete!");
+        }
+      } catch (e) {
+        console.error("Cleanup Error:", e);
+      }
+    };
+
+    if (isAuth) {
+      cleanupOldOrders();
+    }
 
     // Orders listener
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(100));
