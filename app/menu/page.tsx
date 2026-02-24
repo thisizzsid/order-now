@@ -128,9 +128,14 @@ function MenuContent() {
       {/* Header */}
       <header className="bg-white px-6 pt-12 pb-8 rounded-b-[3rem] shadow-sm sticky top-0 z-30 border-b border-orange-50">
         <div className="flex justify-between items-start mb-4">
-          <div>
-            <h1 className="text-3xl font-black text-orange-900 leading-tight">Ministry Of Chai</h1>
-            <p className="text-sm font-bold text-orange-600/60 uppercase tracking-widest">Premium Tea & Snacks</p>
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 relative">
+              <img src="/moclogo.png" alt="Ministry Of Chai Logo" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-orange-900 leading-tight">Ministry Of Chai</h1>
+              <p className="text-sm font-bold text-orange-600/60 uppercase tracking-widest">Premium Tea & Snacks</p>
+            </div>
           </div>
           <div className="text-right">
             <p className="text-xs font-bold text-gray-400 uppercase mb-1">Welcome</p>

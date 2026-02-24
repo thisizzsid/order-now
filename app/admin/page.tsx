@@ -279,8 +279,8 @@ export default function AdminPage() {
       <aside className="hidden lg:flex w-72 bg-gray-900 flex-col h-screen sticky top-0 p-8">
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center text-white shadow-xl shadow-orange-600/20">
-              <ChefHat size={24} />
+            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-1 overflow-hidden">
+              <img src="/moclogo.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-xl font-black text-white leading-tight tracking-tight">Ministry Of Chai</h1>
           </div>

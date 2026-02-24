@@ -117,8 +117,8 @@ export default function AuthPage() {
       <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 lg:p-10 border border-orange-100 relative">
         
         <div className="text-center mb-10">
-          <div className="w-20 h-20 bg-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-6 rotate-6 shadow-xl shadow-orange-200">
-            <ShieldCheck className="text-white w-10 h-10" />
+          <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 rotate-6 shadow-xl shadow-orange-200 overflow-hidden p-2">
+            <img src="/moclogo.png" alt="Ministry Of Chai Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-black text-gray-900 leading-tight">Ministry Of Chai</h1>
           <p className="text-gray-500 font-bold mt-2 uppercase tracking-widest text-[10px]">Quick Registration</p>

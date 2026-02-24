@@ -163,9 +163,14 @@ function TrackContent() {
           <ArrowLeft size={16} /> Back to Menu
         </button>
         <div className="flex justify-between items-end">
-          <div>
-            <h1 className="text-3xl font-black text-gray-900 leading-tight">Track Order</h1>
-            <p className="text-sm font-bold text-orange-600">ID: #{order.id?.slice(-6).toUpperCase()}</p>
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 relative">
+              <img src="/moclogo.png" alt="Logo" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-gray-900 leading-tight">Track Order</h1>
+              <p className="text-sm font-bold text-orange-600">ID: #{order.id?.slice(-6).toUpperCase()}</p>
+            </div>
           </div>
           <button 
             onClick={generateReceipt}
