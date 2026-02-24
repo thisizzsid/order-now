@@ -652,8 +652,14 @@ export default function AdminPage() {
                             <span className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-xs font-black text-orange-600 shadow-sm group-hover/item:scale-110 transition-transform">
                               {item.quantity}
                             </span>
-                            <span className="font-black text-gray-800 text-sm tracking-tight">{item.name}</span>
+                            <div className="flex flex-col">
+                              <span className="font-black text-gray-800 text-sm tracking-tight">{item.name}</span>
+                              {item.variantName && (
+                                <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">{item.variantName}</span>
+                              )}
+                            </div>
                           </div>
+                          <span className="text-xs font-black text-gray-400">{formatPrice(item.price * item.quantity)}</span>
                         </div>
                       ))}
                     </div>

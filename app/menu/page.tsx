@@ -9,7 +9,7 @@ import { formatPrice } from "../../lib/utils";
 import { ShoppingBag, Plus, Minus, Check, Clock, Table, Trash2, Utensils, Navigation, MessageCircle, Phone, HelpCircle } from "lucide-react";
 import { db } from "../../lib/firebase";
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc } from "firebase/firestore";
-import { OrderType, PaymentType } from "../../types";
+import { OrderType, PaymentType, MenuItem, ItemVariant } from "../../types";
 import { motion, AnimatePresence } from "framer-motion";
 
 function MenuContent() {
@@ -19,7 +19,7 @@ function MenuContent() {
   const { customer, isLoading } = useAuth();
   const { items, addToCart, removeFromCart, clearCart, totalAmount } = useCart();
   
-  const [menuItems, setMenuItems] = useState<any[]>(MENU_ITEMS);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITEMS);
   const [upiId, setUpiId] = useState("");
   const [orderType, setOrderType] = useState<OrderType>(tableNumber ? "dinein" : "takeaway");
   const [paymentType, setPaymentType] = useState<PaymentType>("upi");
@@ -178,7 +178,6 @@ function MenuContent() {
           </div>
         ) : filteredItems.length > 0 ? (
           filteredItems.map(item => {
-            const cartItem = items.find(i => i.id === item.id);
             return (
               <motion.div 
                 layout
@@ -187,58 +186,111 @@ function MenuContent() {
                 key={item.id} 
                 className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-orange-50 group hover:shadow-xl hover:shadow-orange-200/50 transition-all duration-500"
               >
-                <div className="flex gap-6">
-                  {/* Item Image Placeholder */}
-                  <div className="w-24 h-24 bg-orange-100 rounded-3xl flex items-center justify-center text-orange-600 shrink-0 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                    <Utensils size={32} />
-                  </div>
-                  
-                  {/* Item Details */}
-                  <div className="flex-1 min-w-0 py-1">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="text-lg font-black text-gray-900 truncate tracking-tight">{item.name}</h3>
-                      <p className="text-lg font-black text-orange-600 ml-2">{formatPrice(item.price)}</p>
+                <div className="flex flex-col gap-6">
+                  <div className="flex gap-6">
+                    {/* Item Image Placeholder */}
+                    <div className="w-24 h-24 bg-orange-100 rounded-3xl flex items-center justify-center text-orange-600 shrink-0 shadow-inner group-hover:scale-110 transition-transform duration-500">
+                      <Utensils size={32} />
                     </div>
-                    <p className="text-xs text-gray-400 font-medium line-clamp-2 leading-relaxed mb-4">
-                      {item.description}
-                    </p>
                     
-                    {/* Add to Cart Actions */}
-                    <div className="flex items-center justify-between">
+                    {/* Item Details */}
+                    <div className="flex-1 min-w-0 py-1">
+                      <div className="flex justify-between items-start mb-1">
+                        <h3 className="text-lg font-black text-gray-900 truncate tracking-tight">{item.name}</h3>
+                        <p className="text-lg font-black text-orange-600 ml-2">
+                          {item.variants && item.variants.length > 0 
+                            ? `From ${formatPrice(Math.min(...item.variants.map((v: ItemVariant) => v.price)))}`
+                            : formatPrice(item.price)}
+                        </p>
+                      </div>
+                      <p className="text-xs text-gray-400 font-medium line-clamp-2 leading-relaxed mb-4">
+                        {item.description}
+                      </p>
+                      
                       <div className="flex items-center gap-1">
                         <span className="bg-orange-100 text-orange-600 text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-widest">
                           {item.category}
                         </span>
                       </div>
-                      
-                      {cartItem ? (
-                        <div className="flex items-center bg-gray-900 rounded-2xl p-1 shadow-lg">
-                          <button 
-                            onClick={() => removeFromCart(item.id)}
-                            aria-label="Remove one"
-                            className="p-2 hover:bg-gray-800 rounded-xl text-white transition-colors"
-                          >
-                            <Minus size={16} />
-                          </button>
-                          <span className="w-8 text-center font-black text-white text-sm">{cartItem.quantity}</span>
-                          <button 
-                            onClick={() => addToCart(item)}
-                            aria-label="Add more"
-                            className="p-2 hover:bg-gray-800 rounded-xl text-white transition-colors"
-                          >
-                            <Plus size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <button 
-                          onClick={() => addToCart(item)}
-                          aria-label="Add to cart"
-                          className="bg-orange-600 text-white p-3 rounded-2xl shadow-lg shadow-orange-600/20 active:scale-90 transition-all hover:bg-orange-700"
-                        >
-                          <Plus size={20} strokeWidth={3} />
-                        </button>
-                      )}
                     </div>
+                  </div>
+
+                  {/* Variants / Add to Cart */}
+                  <div className="space-y-4">
+                    {item.variants && item.variants.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {item.variants.map((variant: ItemVariant) => {
+                          const cartItem = items.find(i => i.id === item.id && i.variantName === variant.name);
+                          return (
+                            <div key={variant.name} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{variant.name}</span>
+                                <span className="text-xs font-black text-orange-600">{formatPrice(variant.price)}</span>
+                              </div>
+                              
+                              {cartItem ? (
+                                <div className="flex items-center justify-between bg-gray-900 rounded-xl p-1 shadow-md">
+                                  <button 
+                                    onClick={() => removeFromCart(item.id, variant.name)}
+                                    aria-label={`Remove one ${variant.name}`}
+                                    className="p-1 hover:bg-gray-800 rounded-lg text-white transition-colors"
+                                  >
+                                    <Minus size={14} />
+                                  </button>
+                                  <span className="text-center font-black text-white text-xs">{cartItem.quantity}</span>
+                                  <button 
+                                    onClick={() => addToCart({ id: item.id, name: item.name, price: variant.price, quantity: 1, variantName: variant.name })}
+                                    aria-label={`Add more ${variant.name}`}
+                                    className="p-1 hover:bg-gray-800 rounded-lg text-white transition-colors"
+                                  >
+                                    <Plus size={14} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button 
+                                  onClick={() => addToCart({ id: item.id, name: item.name, price: variant.price, quantity: 1, variantName: variant.name })}
+                                  className="w-full py-2 bg-white text-orange-600 border border-orange-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-600 hover:text-white transition-all shadow-sm"
+                                >
+                                  ADD
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end">
+                        {items.find(i => i.id === item.id) ? (
+                          <div className="flex items-center bg-gray-900 rounded-2xl p-1 shadow-lg">
+                            <button 
+                              onClick={() => removeFromCart(item.id)}
+                              aria-label="Remove one"
+                              className="p-2 hover:bg-gray-800 rounded-xl text-white transition-colors"
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <span className="w-8 text-center font-black text-white text-sm">
+                              {items.find(i => i.id === item.id)?.quantity}
+                            </span>
+                            <button 
+                              onClick={() => addToCart({ id: item.id, name: item.name, price: item.price, quantity: 1 })}
+                              aria-label="Add more"
+                              className="p-2 hover:bg-gray-800 rounded-xl text-white transition-colors"
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => addToCart({ id: item.id, name: item.name, price: item.price, quantity: 1 })}
+                            aria-label="Add to cart"
+                            className="bg-orange-600 text-white px-8 py-3 rounded-2xl shadow-lg shadow-orange-600/20 active:scale-95 transition-all font-black text-xs uppercase tracking-widest flex items-center gap-2"
+                          >
+                            ADD TO CART <Plus size={18} strokeWidth={3} />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>

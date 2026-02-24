@@ -3,11 +3,17 @@ export type PaymentType = 'upi' | 'counter';
 export type PaymentStatus = 'pending' | 'paid' | 'failed';
 export type OrderStatus = 'received' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
 
+export interface ItemVariant {
+  name: string; // e.g., "Small", "Medium", "Full", "Half"
+  price: number;
+}
+
 export interface OrderItem {
   id: string;
   name: string;
   price: number;
   quantity: number;
+  variantName?: string; // e.g., "Medium"
 }
 
 export interface Order {
@@ -20,13 +26,17 @@ export interface Order {
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
   createdAt: any; // Firestore Timestamp
+  customerName: string;
+  customerMobile: string;
+  taxAmount?: number;
 }
 
 export interface MenuItem {
   id: string;
   name: string;
   description: string;
-  price: number;
+  price: number; // Base price or starting price
   category: string;
   image?: string;
+  variants?: ItemVariant[];
 }

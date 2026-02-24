@@ -6,7 +6,7 @@ import { OrderItem } from "../types";
 interface CartContextType {
   items: OrderItem[];
   addToCart: (item: OrderItem) => void;
-  removeFromCart: (id: string) => void;
+  removeFromCart: (id: string, variantName?: string) => void;
   clearCart: () => void;
   totalAmount: number;
 }
@@ -18,21 +18,26 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const addToCart = (item: OrderItem) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
+      // Create a unique key for the item based on ID and Variant Name
+      const itemKey = `${item.id}-${item.variantName || 'base'}`;
+      const existing = prev.find((i) => `${i.id}-${i.variantName || 'base'}` === itemKey);
+      
       if (existing) {
-        return prev.map((i) => (i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i));
+        return prev.map((i) => (`${i.id}-${i.variantName || 'base'}` === itemKey ? { ...i, quantity: i.quantity + (item.quantity || 1) } : i));
       }
-      return [...prev, { ...item, quantity: 1 }];
+      return [...prev, { ...item, quantity: item.quantity || 1 }];
     });
   };
 
-  const removeFromCart = (id: string) => {
+  const removeFromCart = (id: string, variantName?: string) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.id === id);
+      const itemKey = `${id}-${variantName || 'base'}`;
+      const existing = prev.find((i) => `${i.id}-${i.variantName || 'base'}` === itemKey);
+      
       if (existing && existing.quantity > 1) {
-        return prev.map((i) => (i.id === id ? { ...i, quantity: i.quantity - 1 } : i));
+        return prev.map((i) => (`${i.id}-${i.variantName || 'base'}` === itemKey ? { ...i, quantity: i.quantity - 1 } : i));
       }
-      return prev.filter((i) => i.id !== id);
+      return prev.filter((i) => `${i.id}-${i.variantName || 'base'}` !== itemKey);
     });
   };
 
