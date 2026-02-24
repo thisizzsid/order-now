@@ -30,7 +30,8 @@ import {
   AlertCircle
 } from "lucide-react";
 import { format } from "date-fns";
-import { Plus, Edit2, Trash2, X, Check, Save } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Check, Save, Volume2, VolumeX } from "lucide-react";
+import { notificationManager } from "../../lib/notification-manager";
 
 export default function AdminPage() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
@@ -52,6 +53,13 @@ export default function AdminPage() {
   // Settings State
   const [upiId, setUpiId] = useState("");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [notifSettings, setNotifSettings] = useState({ volume: 1.0, enabled: true });
+
+  useEffect(() => {
+    if (notificationManager) {
+      setNotifSettings(notificationManager.getSettings());
+    }
+  }, []);
 
   useEffect(() => {
     // Check session storage for existing auth
@@ -87,11 +95,19 @@ export default function AdminPage() {
 
     // Orders listener
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(100));
+    let isInitialLoad = true;
     const unsubscribeOrders = onSnapshot(q, (snapshot) => {
       const ordersData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Order[];
+      
+      // Trigger new order sound if there's a new order added
+      if (!isInitialLoad && snapshot.docChanges().some(change => change.type === "added")) {
+        notificationManager?.playNewOrder();
+      }
+      isInitialLoad = false;
+      
       setOrders(ordersData);
       setLoading(false);
     });
@@ -181,6 +197,11 @@ export default function AdminPage() {
     try {
       const orderRef = doc(db, "orders", orderId);
       await updateDoc(orderRef, { orderStatus: status });
+      
+      // Play sound when marking as ready
+      if (status === 'ready') {
+        notificationManager?.playOrderReady();
+      }
     } catch (error) {
       console.error("Error updating order:", error);
     }
@@ -572,27 +593,92 @@ export default function AdminPage() {
               </div>
             </div>
           ) : activeTab === 'settings' ? (
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 max-w-2xl">
-              <h3 className="text-2xl font-black text-gray-900 mb-8">Restaurant Settings</h3>
-              <div className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">UPI ID for Payments</label>
-                  <div className="flex gap-2 mt-2">
-                    <input 
-                      value={upiId}
-                      onChange={e => setUpiId(e.target.value)}
-                      placeholder="yourname@upi"
-                      className="flex-1 bg-gray-50 border-none rounded-2xl py-4 px-6 font-bold text-gray-900"
-                    />
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 max-w-2xl space-y-10">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900 mb-8">Restaurant Settings</h3>
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">UPI ID for Payments</label>
+                    <div className="flex gap-2 mt-2">
+                      <input 
+                        value={upiId}
+                        onChange={e => setUpiId(e.target.value)}
+                        placeholder="yourname@upi"
+                        className="flex-1 bg-gray-50 border-none rounded-2xl py-4 px-6 font-bold text-gray-900"
+                      />
+                      <button 
+                        onClick={handleSaveSettings}
+                        disabled={isSavingSettings}
+                        className="bg-orange-600 text-white px-8 rounded-2xl font-black text-xs flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {isSavingSettings ? <Loader2 className="animate-spin" /> : <Save size={18} />} SAVE
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-2 ml-1">Customers will use this UPI ID to pay via "Pay Now" option.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-10 border-t border-gray-100">
+                <h3 className="text-2xl font-black text-gray-900 mb-8">Notifications</h3>
+                <div className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-black text-gray-900">Enable Audio Alerts</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Master Switch for all sounds</p>
+                    </div>
                     <button 
-                      onClick={handleSaveSettings}
-                      disabled={isSavingSettings}
-                      className="bg-orange-600 text-white px-8 rounded-2xl font-black text-xs flex items-center gap-2 disabled:opacity-50"
+                      onClick={() => {
+                        const next = !notifSettings.enabled;
+                        setNotifSettings(prev => ({ ...prev, enabled: next }));
+                        notificationManager?.saveSettings(notifSettings.volume, next);
+                      }}
+                      aria-label={notifSettings.enabled ? "Disable Notifications" : "Enable Notifications"}
+                      className={`w-16 h-10 rounded-full p-1 transition-all ${notifSettings.enabled ? 'bg-orange-600' : 'bg-gray-200'}`}
                     >
-                      {isSavingSettings ? <Loader2 className="animate-spin" /> : <Save size={18} />} SAVE
+                      <div className={`w-8 h-8 bg-white rounded-full shadow-md transition-all ${notifSettings.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
                     </button>
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-2 ml-1">Customers will use this UPI ID to pay via "Pay Now" option.</p>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Notification Volume</p>
+                      <span className="text-sm font-black text-orange-600">{Math.round(notifSettings.volume * 100)}%</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {notifSettings.volume === 0 ? <VolumeX className="text-gray-400" /> : <Volume2 className="text-orange-600" />}
+                      <input 
+                        type="range"
+                        id="notif-volume"
+                        aria-label="Notification Volume"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={notifSettings.volume}
+                        onChange={(e) => {
+                          const next = parseFloat(e.target.value);
+                          setNotifSettings(prev => ({ ...prev, volume: next }));
+                          notificationManager?.saveSettings(next, notifSettings.enabled);
+                        }}
+                        className="flex-1 h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-4">
+                    <button 
+                      onClick={() => notificationManager?.playNewOrder()}
+                      className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-orange-600 hover:border-orange-100 transition-all"
+                    >
+                      Test New Order
+                    </button>
+                    <button 
+                      onClick={() => notificationManager?.playOrderReady()}
+                      className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-orange-600 hover:border-orange-100 transition-all"
+                    >
+                      Test Order Ready
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
