@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { db } from "../../lib/firebase";
-import { collection, query, orderBy, onSnapshot, updateDoc, doc, where, limit, addDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, updateDoc, doc, where, limit, addDoc, deleteDoc, setDoc } from "firebase/firestore";
 import { Order } from "../../types/models";
 import { formatPrice } from "../../lib/utils";
 import { 
@@ -46,6 +46,7 @@ export default function AdminPage() {
   // Menu Management State
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
   const [newItem, setNewItem] = useState({ name: "", description: "", price: 0, category: "Chai Specials" });
   
   // Settings State
@@ -109,6 +110,21 @@ export default function AdminPage() {
       await addDoc(collection(db, "menu"), newItem);
       setIsAddingItem(false);
       setNewItem({ name: "", description: "", price: 0, category: "Chai Specials" });
+      alert("Item added successfully!");
+    } catch (e) { console.error(e); }
+  };
+
+  const handleEditItem = async () => {
+    if (!editingItem || !editingItem.name || editingItem.price <= 0) return;
+    try {
+      await updateDoc(doc(db, "menu", editingItem.id), {
+        name: editingItem.name,
+        description: editingItem.description,
+        price: editingItem.price,
+        category: editingItem.category
+      });
+      setEditingItem(null);
+      alert("Item updated successfully!");
     } catch (e) { console.error(e); }
   };
 
@@ -125,11 +141,11 @@ export default function AdminPage() {
   const handleSaveSettings = async () => {
     setIsSavingSettings(true);
     try {
-      await updateDoc(doc(db, "settings", "config"), { upiId });
+      await setDoc(doc(db, "settings", "config"), { upiId }, { merge: true });
+      alert("Settings saved successfully!");
     } catch (e) {
-      // If doc doesn't exist, create it
-      const { setDoc } = await import("firebase/firestore");
-      await setDoc(doc(db, "settings", "config"), { upiId });
+      console.error("Error saving settings:", e);
+      alert("Failed to save settings.");
     }
     setIsSavingSettings(false);
   };
@@ -443,21 +459,72 @@ export default function AdminPage() {
               <div className="space-y-4">
                 {menuItems.map((item: any) => (
                   <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                    <div>
-                      <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest">{item.category}</p>
-                      <p className="font-black text-gray-900">{item.name}</p>
-                      <p className="text-xs text-gray-400">{item.description}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <p className="font-black text-gray-900">{formatPrice(item.price)}</p>
-                      <button 
-                        onClick={() => handleDeleteItem(item.id)}
-                        aria-label="Delete Item"
-                        className="text-gray-300 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
+                    {editingItem?.id === item.id ? (
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 mr-4">
+                        <input 
+                          placeholder="Item Name"
+                          aria-label="Item Name"
+                          className="p-2 rounded-lg border font-bold"
+                          value={editingItem.name}
+                          onChange={e => setEditingItem({...editingItem, name: e.target.value})}
+                        />
+                        <input 
+                          placeholder="Price"
+                          aria-label="Price"
+                          type="number"
+                          className="p-2 rounded-lg border font-bold"
+                          value={editingItem.price}
+                          onChange={e => setEditingItem({...editingItem, price: Number(e.target.value)})}
+                        />
+                        <select 
+                          aria-label="Item Category"
+                          className="p-2 rounded-lg border font-bold"
+                          value={editingItem.category}
+                          onChange={e => setEditingItem({...editingItem, category: e.target.value})}
+                        >
+                          <option>Chai Specials</option>
+                          <option>Snacks</option>
+                          <option>Wraps & Rolls</option>
+                          <option>Beverages</option>
+                        </select>
+                        <input 
+                          placeholder="Description"
+                          aria-label="Description"
+                          className="p-2 rounded-lg border font-bold"
+                          value={editingItem.description}
+                          onChange={e => setEditingItem({...editingItem, description: e.target.value})}
+                        />
+                        <div className="flex gap-2">
+                          <button onClick={handleEditItem} className="bg-green-600 text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase">Save</button>
+                          <button onClick={() => setEditingItem(null)} className="bg-gray-400 text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest">{item.category}</p>
+                          <p className="font-black text-gray-900">{item.name}</p>
+                          <p className="text-xs text-gray-400">{item.description}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <p className="font-black text-gray-900">{formatPrice(item.price)}</p>
+                          <button 
+                            onClick={() => setEditingItem(item)}
+                            className="text-gray-300 hover:text-blue-500 transition-colors"
+                            aria-label="Edit Item"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteItem(item.id)}
+                            aria-label="Delete Item"
+                            className="text-gray-300 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
