@@ -852,7 +852,8 @@ export default function AdminPage() {
                     )}
                   </div>
                 </div>
-              ))}
+              );
+            })}
 
               {filteredOrders.length === 0 && (
                 <div className="col-span-full py-40 flex flex-col items-center justify-center text-gray-300">

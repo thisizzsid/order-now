@@ -363,7 +363,7 @@ function MenuContent() {
             exit={{ y: 100 }}
             className="fixed bottom-0 left-0 right-0 p-4 z-50 flex justify-center"
           >
-            <div className={`bg-gray-900 text-white rounded-[2rem] shadow-2xl border-t border-white/10 w-full max-w-lg overflow-hidden transition-all duration-300 ${showFullCheckout ? 'p-8' : 'p-3 flex items-center justify-between'}`}>
+            <div className={`bg-gray-900 text-white rounded-4xl shadow-2xl border-t border-white/10 w-full max-w-lg overflow-hidden transition-all duration-300 ${showFullCheckout ? 'p-8' : 'p-3 flex items-center justify-between'}`}>
               {!showFullCheckout ? (
                 /* Slim Mode */
                 <>
