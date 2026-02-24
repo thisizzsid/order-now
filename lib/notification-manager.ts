@@ -8,8 +8,8 @@ class NotificationManager {
 
   constructor() {
     if (typeof window !== "undefined") {
-      this.newOrderAudio = new Audio("/new_order.mp3");
-      this.orderReadyAudio = new Audio("/order_ready.mp3");
+      this.newOrderAudio = new Audio("/new_order.wav");
+      this.orderReadyAudio = new Audio("/order_ready.wav");
       this.loadSettings();
     }
   }
