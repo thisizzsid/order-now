@@ -728,14 +728,12 @@ export default function AdminPage() {
             </div>
           ) : (
             <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-3' : 'grid-cols-1'}`}>
-              {filteredOrders.map(order => {
-                const hasPinged = isRecentPing(order);
-                return (
+              {filteredOrders.map(order => (
                   <div 
                     key={order.id} 
                     className={`bg-white rounded-[2.5rem] shadow-sm border overflow-hidden flex flex-col group hover:shadow-2xl hover:shadow-orange-600/5 transition-all duration-500 ${
                       viewMode === 'list' ? 'flex-row items-center p-6' : ''
-                    } ${hasPinged ? 'border-orange-500 ring-4 ring-orange-100 animate-pulse' : 'border-gray-100'}`}
+                    } ${isRecentPing(order) ? 'border-orange-500 ring-4 ring-orange-100 animate-pulse' : 'border-gray-100'}`}
                   >
                     {/* Header */}
                     <div className={`p-8 border-b border-gray-50 ${viewMode === 'list' ? 'border-none w-1/4' : ''}`}>
@@ -752,7 +750,7 @@ export default function AdminPage() {
                               </span>
                             )}
                             <span className="text-[10px] text-gray-400 font-black">#{order.id?.slice(-6).toUpperCase()}</span>
-                            {hasPinged && (
+                            {isRecentPing(order) && (
                               <span className="bg-orange-600 text-white text-[10px] font-black uppercase px-2 py-1 rounded-lg flex items-center gap-1 animate-bounce">
                                 <Bell size={10} /> PINGING!
                               </span>
@@ -852,8 +850,7 @@ export default function AdminPage() {
                     )}
                   </div>
                 </div>
-              );
-            })}
+              ))}
 
               {filteredOrders.length === 0 && (
                 <div className="col-span-full py-40 flex flex-col items-center justify-center text-gray-300">
